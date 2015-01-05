@@ -10,20 +10,14 @@
 
 <script type="text/javascript" src="sortpixels.js"></script>
 <script type="text/javascript">
-var imageUrl = "ISS019-E-014918_lrg.jpg";
-//var imageUrl = "test.png";
+var imageUrl = "image.jpg";
 
 var img = new Image();
 img.onload = function(){
-  // params:
-  // - image object
-  // - mode (0 = black, 1 = brightness, 2 = white, default = 0)
-  // - iterations (default = 1)
-
-  var sortedCanvas = sortPixels(img, 0, 1);
+  var sortedCanvas = sortPixels(img);
   document.body.appendChild(sortedCanvas);
 }
-img.src = imageUrl;
+img.src = 'image.jpg';
 </script>
 
 
