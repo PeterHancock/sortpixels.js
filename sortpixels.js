@@ -25,8 +25,12 @@ var sortPixels = (function(){
   }
 
   function getVal(j, color, bright, bl, br) {
-    //var d = ((bright - bl) * (bright - bl) + (bright - br) * (bright - br)) / 255 / 255 / 2;
-    return  bright    +    255 * j / height;
+      var d = (bl + br  - 2 * bright) / 2; //Measure of local brightness difference
+      var a = 0.01;
+      if ( d < 0) {
+          d = -d;
+      }
+      return  a * bright / 255 * (1 - d)    +   (1 - a * d) * j / height;
   }
 
   function draw() {
