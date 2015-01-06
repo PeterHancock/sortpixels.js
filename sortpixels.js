@@ -66,9 +66,9 @@ var sortPixels = (function(){
 
   function setPixelValue(x, y, val) {
     var offset = (x + y * width) * 4;
-    var r = (val >> 16) & 255;
-    var g = (val >> 8) & 255;
-    var b = val & 255;
+    var r = val[0];
+    var g = val[1];
+    var b = val[2];
     imageData[offset] = r;
     imageData[offset+1] = g;
     imageData[offset+2] = b;
@@ -79,7 +79,7 @@ var sortPixels = (function(){
     var r = imageData[offset];
     var g = imageData[offset + 1];
     var b = imageData[offset + 2];
-    return ( ((255 << 8) | r) << 8 | g) << 8 | b;
+    return [r, g, b];
   }
 
   function getPixelBrightness(x, y) {
