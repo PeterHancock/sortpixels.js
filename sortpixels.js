@@ -1,11 +1,12 @@
 var sortPixels = (function(){
 
+  var blockSize = 50;
+
   var canvas, ctx, width, height;
   var imageData, imageDataWrapper;
 
-  var crange = 255 * 255 * 255;
 
-  var blockSize = 10;
+
 
   function init(img) {
     setup(img);
@@ -26,13 +27,9 @@ var sortPixels = (function(){
     imageData = imageDataWrapper.data;
   }
 
-  function getVal(j, color, bright, bl, br) {
-      var d = (bl + br  - 2 * bright) / 2; // Measure of local brightness difference
-      var a = 0.1;
-      if ( d < 0) {
-          d = -d;
-      }
-      return  a * bright + (1 - a) * j / height;
+  function getVal(height, color, brightness, brightnessDiff) {
+      var a =  0.7;
+      return  a * brightness * brightnessDiff + (1 - a) * height;
   }
 
   function draw() {
@@ -45,52 +42,36 @@ var sortPixels = (function(){
   function sortColumn(x) {
     var j = 0;
     var y = 0;
-    var column = new Array(height);
-    var bright = getBlockBrightness(x, y);
-    var br = getBlockBrightness(x, y);
+    var column = new Array(Math.floor(height / blockSize));
+    var brightness = getBlockBrightness(x, y);
+    var brightnessNext = getBlockBrightness(x, y);
     for(j = 0; j < height / blockSize; j++) {
       y = j * blockSize;
       var block = getBlock(x, y);
-      var bl = bright;
-      var bright = br;
-      br = getBlockBrightness(x, y == height - 1 ? y : y + 1);
-      column[j] = {j: j, block: block, val: getVal(y, block, bright, bl, br)};
+      var brightnessPrevious = brightness;
+      var brightness = brightnessNext;
+      brightnessNext = getBlockBrightness(x, y == height - blockSize ? y : y + blockSize);
+      var brightnessDiff = (brightnessPrevious + brightnessNext  - 2 * brightness) / 2; // Measure of local brightness difference
+      column[j] = {j: j, block: block, val: getVal(y / height, block, brightness, brightnessDiff)};
     }
     column = column.sort(function (a, b) {
         return a.val - b.val;
     });
-    for(j=0; j < height / blockSize; j++) {
+    for(j = 0; j < height / blockSize; j++) {
       setBlockValue(x, j * blockSize, column[j].block);
     }
   }
 
   function setPixelValue(x, y, rgb) {
     var offset = (x + y * width) * 4;
-    imageData[offset] = rgb[0];
-    imageData[offset+1] = rgb[1];
-    imageData[offset+2] = rgb[2];
-  }
-
-  function setBlockValue(x, y, block) {
-    for (var i = 0; i < blockSize; i++) {
-      for (var j = 0; j < blockSize; j++) {
-        setPixelValue(x + i, y + j, block[i][j])
-      }
+    for(var i = 0; i < 3; i++) {
+      imageData[offset + i] = rgb[0 + i];
     }
   }
 
   function getPixelValue(x, y) {
     var offset = (x + y * width) * 4;
-    var r = imageData[offset];
-    var g = imageData[offset + 1];
-    var b = imageData[offset + 2];
-    return [r, g, b];
-  }
-
-  function getBlockBrightness(x, y) {
-    return reduceBlock(x, y, function (x, y, memo) {
-      return memo + getPixelBrightness(x, y);
-    }, 0) / blockSize / blockSize;
+    return Array.prototype.slice.call(imageData, offset, offset + 3);
   }
 
   function getPixelBrightness(x, y) {
@@ -101,39 +82,45 @@ var sortPixels = (function(){
     return Math.max(r,g,b) / 255;
   }
 
+  function setBlockValue(x, y, block) {
+    var i = 0;
+    forBlock(x, y, function(x, y) {
+      setPixelValue(x, y, block[i++]);
+    });
+
+  }
+
   function getBlock(x, y) {
-    return mapBlock(x, y, getPixelValue)
+    return mapBlock(x, y, getPixelValue);
+  }
+
+  function getBlockBrightness(x, y) {
+    return reduceBlock(x, y, function (x, y, memo) {
+      return memo + getPixelBrightness(x, y);
+    }, 0) / blockSize / blockSize;
   }
 
   function forBlock(x, y, iteration) {
     for (var i = 0; i < blockSize; i++) {
-      var col = [];
-      block.push(col);
       for (var j = 0; j < blockSize; j++) {
-        col.push(mapper(x + i, y + j));
+        iteration(x + i, y + j, i, j);
       }
     }
   }
 
   function mapBlock(x, y, mapper) {
     var block = [];
-    for (var i = 0; i < blockSize; i++) {
-      var col = [];
-      block.push(col);
-      for (var j = 0; j < blockSize; j++) {
-        col.push(mapper(x + i, y + j));
-      }
-    }
+    forBlock(x, y, function (x, y) {
+      block.push(mapper(x, y));
+    });
     return block;
   }
 
   function reduceBlock(x, y, reducer, initial) {
     var val = initial;
-    for (var i = 0; i < blockSize; i++) {
-      for (var j = 0; j < blockSize; j++) {
-        val = reducer(x + i, y + j, val);
-      }
-    }
+    forBlock(x, y, function (x, y) {
+      val = reducer(x, y, val);
+    });
     return val;
   }
 
