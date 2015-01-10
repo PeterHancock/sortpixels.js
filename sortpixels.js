@@ -5,6 +5,8 @@ var sortPixels = (function(){
 
   var crange = 255 * 255 * 255;
 
+  var blockSize = 100;
+
   function init(img) {
     setup(img);
     draw();
@@ -26,40 +28,42 @@ var sortPixels = (function(){
 
   function getVal(j, color, bright, bl, br) {
       var d = (bl + br  - 2 * bright) / 2; // Measure of local brightness difference
-      var a = 0.01;
+      var a = 0.4;
       if ( d < 0) {
           d = -d;
       }
-      return  a * (1 - d)  +  (1 - a) * j / height;
+      return  a * d / 255  +  (1 - a) * j / height;
   }
 
   function draw() {
-   for (var i = 0; i < width; i++) {
-      sortColumn(i);
+   for (var i = 0; i < width / blockSize; i++) {
+      sortColumn(i * blockSize);
     }
     ctx.putImageData(imageDataWrapper, 0, 0);
   }
 
-  function sortColumn(i) {
+  function sortColumn(x) {
     var j = 0;
 
       var column = new Array(height);
-      var bright = getPixelBrightness(i, 0);
-      var br = getPixelBrightness(i, 0);
-      for(j = 0; j < height; j++) {
-        var col = getPixelValue(i, j);
+      var bright = getPixelBrightness(x, 0);
+      var br = getPixelBrightness(x, 0);
+      for(j = 0; j < height / blockSize; j++) {
+        var y = j * blockSize;
+        var col = getPixelValue(x, y);
+        var block = getBlock(x, y);
         var bl = bright;
         var bright = br;
-        br = getPixelBrightness(i, j == height - 1 ? j : j + 1);
-        column[j] = {j: j, col: col, val: getVal(j, col, bright, bl, br)};
+        br = getPixelBrightness(x, y == height - 1 ? y : y + 1);
+        column[j] = {j: j, block: block, val: getVal(y, col, bright, bl, br)};
       }
 
       column = column.sort(function (a, b) {
           return a.val - b.val;
       });
 
-      for(j=0; j < height; j++) {
-        setPixelValue(i, j, column[j].col);
+      for(j=0; j < height / blockSize; j++) {
+        setBlockValue(x, j * blockSize, column[j].block);
       }
 
   }
@@ -72,6 +76,14 @@ var sortPixels = (function(){
     imageData[offset] = r;
     imageData[offset+1] = g;
     imageData[offset+2] = b;
+  }
+
+  function setBlockValue(x, y, block) {
+    for (var i = 0; i < blockSize; i++) {
+      for (var j = 0; j < blockSize; j++) {
+        setPixelValue(x + i, y + j, block[i][j])
+      }
+    }
   }
 
   function getPixelValue(x, y) {
@@ -90,6 +102,17 @@ var sortPixels = (function(){
     return Math.max(r,g,b);
   }
 
+  function getBlock(x, y) {
+    var block = [];
+    for (var i = 0; i < blockSize; i++) {
+      var col = [];
+      block.push(col);
+      for (var j = 0; j < blockSize; j++) {
+        col.push(getPixelValue(x + i, y + j));
+      }
+    }
+    return block;
+  }
   return init;
 
 })();
